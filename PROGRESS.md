@@ -3,6 +3,24 @@
 「continue」と入力されたら、このファイルを読んで未完了の先頭タスクから再開すること。
 設計の詳細は DESIGN.md、起動方法は README.md を参照。
 
+## Mission Controlフェーズ (2026-07-07 完了・自律実行)
+
+方針判断(自己裁量で確定): シングルクリック=Detail Drawer / ダブルクリック=フォーカス飛行 /
+ポップアップクリック=Steam。Reset=視点+フォーカス+検索+ドロワーを初期化(モードは維持)。
+
+- [x] M1 store拡張: mode/drawerId/galaxyHover/toast/resetCount/flyToPoint/resetView/openDrawer
+- [x] M2 lib/explore.ts + lib/captureBus.ts
+- [x] M3 MissionControl.tsx: ↺Reset/✦Explore/◐Mode/⤓Share+トースト+Daily Expedition+初回オンボーディング
+- [x] M4 Drawer.tsx (Similar(nb)クリックで旅続行)
+- [x] M5 Bodies.tsx: クリック→drawer / uMode(popularity/gems/timeline)
+- [x] M6 GalaxyLabels: ホバーでGalaxySummary+クリックで銀河へ飛行
+- [x] M7 CaptureBridge / Searchリセット連動 / Esc拡張
+- [x] M8 CSS一式+モバイル幅対応
+- [x] M9 DevLens: Export JSON
+- [x] M10 next build検証済み → 残: ユーザーがgit push (下記手順)
+
+pushコマンド: `cd ~/Claude/Projects/SteamLOOK && git add -A && git commit -m "Mission Control, drawer, modes, explore, share" && git push`
+
 ## 状態 (2026-07-05 MVP完成)
 
 - [x] 設計書 (DESIGN.md) 作成

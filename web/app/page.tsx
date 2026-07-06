@@ -6,6 +6,9 @@ import { useAtlas } from '../lib/store';
 import Overlay from '../components/Overlay';
 import Search from '../components/Search';
 import Legend from '../components/Legend';
+import MissionControl from '../components/MissionControl';
+import Drawer from '../components/Drawer';
+import GalaxySummary from '../components/GalaxySummary';
 import DebugPanel from '../components/DebugPanel';
 import DevLens from '../components/DevLens';
 
@@ -20,10 +23,13 @@ export default function Page() {
       .catch(() => {});
   }, [setUniverse]);
 
-  // Escでフォーカス解除 (凡例はLegend側で処理)
+  // Escでフォーカス解除+ドロワーを閉じる (凡例/パネルは各コンポーネント側で処理)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') useAtlas.getState().clearFocus();
+      if (e.key === 'Escape') {
+        useAtlas.getState().clearFocus();
+        useAtlas.getState().closeDrawer();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -35,6 +41,9 @@ export default function Page() {
       <Overlay />
       <Search />
       <Legend />
+      <MissionControl />
+      <Drawer />
+      <GalaxySummary />
       <DebugPanel />
       <DevLens />
     </main>

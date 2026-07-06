@@ -44,11 +44,40 @@ export default function DevLens() {
   if (!report) return null;
 
   const t = report.target;
+
+  // 簡易レポートのJSON出力 (将来の有料レポートの原型)
+  const exportJson = () => {
+    const data = {
+      generated_at: new Date().toISOString(),
+      disclaimer: 'All figures are estimates based on SteamSpy data. Unofficial — not affiliated with Valve.',
+      target_game: { appid: t.id, title: t.t, developer: t.dev, publisher: t.pub, released: t.rel },
+      market_position: report.positions.map((p) => ({ metric: p.metric, value: p.value, percentile: p.pct })),
+      primary_tag_cohort: { tag: report.primaryTag, titles: report.cohortSize },
+      nearest_competitors: report.competitors.map((c) => ({
+        appid: c.b.id, title: c.b.t, relation_score: +c.score.toFixed(3),
+        shared_tags: c.sharedTags, est_owners: c.b.ow ?? null,
+        positive_pct: c.b.rv?.[1] ?? null, price: c.b.pr ?? null,
+      })),
+      similar_hidden_gems: report.gems.map((c) => ({
+        appid: c.b.id, title: c.b.t, hidden_gem_score: c.b.hg, relation_score: +c.score.toFixed(3),
+      })),
+      shared_tag_breakdown: Object.fromEntries(report.tagBreakdown),
+      opportunity_notes: report.opportunities,
+    };
+    const a = document.createElement('a');
+    a.download = `sga-report-${t.id}.json`;
+    a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2));
+    a.click();
+  };
+
   return (
     <div className="lens-panel">
       <div className="lens-head">
         <span>DEVELOPER LENS</span>
-        <button onClick={() => setClosed(true)} aria-label="close">×</button>
+        <span>
+          <button onClick={exportJson} title="Export JSON report" style={{ fontSize: 11 }}>⤓ JSON</button>
+          <button onClick={() => setClosed(true)} aria-label="close">×</button>
+        </span>
       </div>
       <h3>{t.t}</h3>
       <div className="lens-sub">{t.dev}{t.rel ? ` · ${t.rel.slice(0, 10)}` : ''}</div>

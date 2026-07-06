@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAtlas } from '../lib/store';
 import type { Body } from '../lib/types';
 
@@ -10,9 +10,13 @@ export default function Search() {
   const flyTo = useAtlas((s) => s.flyTo);
   const clearFocus = useAtlas((s) => s.clearFocus);
   const setIdle = useAtlas((s) => s.setIdle);
+  const resetCount = useAtlas((s) => s.resetCount);
   const [q, setQ] = useState('');
   const [idx, setIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Reset Viewで検索欄もクリア
+  useEffect(() => { setQ(''); setIdx(0); }, [resetCount]);
 
   // 検索インデックスは一度だけ構築 (キーストロークごとのtoLowerCaseを避けINPを改善)
   const index = useMemo(() => {

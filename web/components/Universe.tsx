@@ -10,6 +10,17 @@ import FocusGraph from './FocusGraph';
 import GalaxyLabels from './GalaxyLabels';
 import { useAtlas } from '../lib/store';
 import { screen, view } from '../lib/screenBus';
+import { bridge } from '../lib/captureBus';
+
+/* 共有画像キャプチャ用ブリッジ (preserveDrawingBuffer前提) */
+function CaptureBridge() {
+  const { gl } = useThree();
+  useEffect(() => {
+    bridge.capture = () => gl.domElement.toDataURL('image/png');
+    return () => { bridge.capture = undefined; };
+  }, [gl]);
+  return null;
+}
 
 /* 検索/ダブルクリック時のカメラ移動。
    ユーザー操作 (ドラッグ/ホイール/パン) が入った瞬間にフォーカス解除 → 永久固定を防ぐ */
@@ -88,7 +99,7 @@ export default function Universe() {
   return (
     <Canvas
       camera={{ position: [0, 1200, 2900], fov: 55, near: 0.5, far: 30000 }}
-      gl={{ antialias: true }}
+      gl={{ antialias: true, preserveDrawingBuffer: true }}
       dpr={[1, 2]}
     >
       <color attach="background" args={['#030308']} />
@@ -99,6 +110,7 @@ export default function Universe() {
       <CameraRig />
       <IdleRotate />
       <ScreenTracker />
+      <CaptureBridge />
       <OrbitControls
         makeDefault
         enableDamping
