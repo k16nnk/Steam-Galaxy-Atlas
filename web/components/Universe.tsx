@@ -22,6 +22,7 @@ function CameraRig() {
     };
     const onStart = () => {
       const st = useAtlas.getState();
+      if (st.idle) st.setIdle(false); // 初回操作で自動回転を停止
       if (st.flyTarget || st.focusMode !== 'none') st.clearFocus();
     };
     ctl.addEventListener('start', onStart);
@@ -40,6 +41,19 @@ function CameraRig() {
     ctl.update();
     if (camera.position.distanceTo(desired) < 0.5) st.arrive(); // 到着 → ロック解除
   });
+  return null;
+}
+
+/* 初回操作までの自動回転 (宇宙全体がゆっくり回る) */
+function IdleRotate() {
+  const { controls } = useThree();
+  const idle = useAtlas((s) => s.idle);
+  useEffect(() => {
+    if (!controls) return;
+    const ctl = controls as unknown as { autoRotate: boolean; autoRotateSpeed: number };
+    ctl.autoRotate = idle;
+    ctl.autoRotateSpeed = 0.35; // 約5分で1周
+  }, [controls, idle]);
   return null;
 }
 
@@ -72,7 +86,7 @@ function ScreenTracker() {
 export default function Universe() {
   return (
     <Canvas
-      camera={{ position: [0, 1300, 3400], fov: 55, near: 0.5, far: 30000 }}
+      camera={{ position: [0, 1200, 2900], fov: 55, near: 0.5, far: 30000 }}
       gl={{ antialias: true }}
       dpr={[1, 2]}
     >
@@ -81,13 +95,14 @@ export default function Universe() {
       <Bodies />
       <GalaxyLabels />
       <CameraRig />
+      <IdleRotate />
       <ScreenTracker />
       <OrbitControls
         makeDefault
         enableDamping
         dampingFactor={0.08}
         minDistance={3}
-        maxDistance={5500}
+        maxDistance={3400}
       />
       <EffectComposer>
         <Bloom luminanceThreshold={0.85} intensity={0.35} mipmapBlur radius={0.6} />

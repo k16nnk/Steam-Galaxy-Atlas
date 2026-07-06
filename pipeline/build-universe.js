@@ -320,8 +320,11 @@ for (const g of games) if (g.galaxy && g.developer) devGalaxy.set(g.developer, g
 const usedGalaxyIds = [...new Set(games.filter((g) => g.galaxy).map((g) => g.galaxy))];
 for (const g of games) {
   if (g.type === 'asteroid' && !g.galaxy) {
+    // 注意: シードは配置用 (appid) と別系統にする。同一シードを使うと
+    // 「ランダムにこの銀河へ入った小惑星は角度も同じ」という相関が生じ、塊になる
     g.galaxy = (g.developer && devGalaxy.get(g.developer))
-      || usedGalaxyIds[Math.floor(mulberry32(g.appid)() * usedGalaxyIds.length)] || 'g_indie';
+      || usedGalaxyIds[Math.floor(mulberry32(g.appid * 3 + 101)() * usedGalaxyIds.length)]
+      || 'g_indie';
   }
 }
 for (const g of games) g.diameter = diameterOf(g);
@@ -428,15 +431,18 @@ for (const g of games) {
   g.pos = [p.pos[0] + d * Math.cos(th) * Math.cos(ph),
     p.pos[1] + d * Math.sin(ph), p.pos[2] + d * Math.sin(th) * Math.cos(ph)];
 }
-// (1e) 小惑星: 銀河外縁アニュラス (密度ノイズ、ローカル)
+// (1e) 小惑星: エッジワース・カイパーベルト風 — 銀河外周の全周に薄く散布。
+//      角度は全周一様 + 弱い濃淡、半径は外側ほど疎、垂直方向は外側ほど薄い
 for (const g of games) {
   if (g.type !== 'asteroid') continue;
   const rMax = galaxyR.get(g.galaxy) || 300;
   const rng = mulberry32(g.appid);
   let th = rng() * Math.PI * 2;
-  th += 0.35 * Math.sin(th * 3 + rMax);
-  const r = rMax * (0.8 + 0.3 * rng());
-  g.pos = [Math.cos(th) * r, (rng() - 0.5) * DISC_RY * 1.6, Math.sin(th) * r];
+  th += 0.18 * Math.sin(th * 2 + (g.appid % 7)); // ごく弱い濃淡
+  const t = Math.pow(rng(), 1.6);                 // 内縁寄りに濃く、外側は疎
+  const r = rMax * (0.85 + 0.55 * t);
+  const flat = 1 - 0.6 * t;                       // 外側ほど薄い円盤
+  g.pos = [Math.cos(th) * r, (rng() - 0.5) * DISC_RY * 1.1 * flat, Math.sin(th) * r];
 }
 // 光源方向 (ローカル座標で計算 — 平行移動不変)
 const sysById = new Map(systems.map((s) => [s.id, s]));

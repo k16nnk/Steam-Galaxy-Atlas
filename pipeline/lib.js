@@ -151,8 +151,18 @@ export function relation(a, b) {
 }
 
 // シード付き決定的乱数
+// 注意: appidのような構造的なシードではmulberry32の初期出力が強く相関するため、
+// splitmix32を2回通してシードを完全に拡散させる (実測で一様性を確認済み)。
+function splitmix32(a) {
+  a |= 0; a = (a + 0x9e3779b9) | 0;
+  let t = a ^ (a >>> 16);
+  t = Math.imul(t, 0x21f0aaad);
+  t = t ^ (t >>> 15);
+  t = Math.imul(t, 0x735a2d97);
+  return (t ^ (t >>> 15)) >>> 0;
+}
 export function mulberry32(seed) {
-  let a = seed >>> 0;
+  let a = splitmix32(splitmix32(seed));
   return () => {
     a |= 0; a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);

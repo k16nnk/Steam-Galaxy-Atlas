@@ -14,6 +14,7 @@ interface AtlasState {
   flyTarget: [number, number, number] | null;
   flyDistance: number;
   legendOpen: boolean;
+  idle: boolean;               // 初回操作までの自動回転 (操作/検索/フォーカスで解除)
   mode: 'popularity';          // 将来のモード拡張用 (UIには出さない)
   setUniverse: (u: Universe) => void;
   hoverEnter: (id: number) => void;
@@ -22,6 +23,7 @@ interface AtlasState {
   arrive: () => void;          // カメラ移動完了 → ロック解除
   clearFocus: () => void;      // ユーザー操作 / Esc / Search空欄で解除
   setLegendOpen: (v: boolean) => void;
+  setIdle: (v: boolean) => void;
 }
 
 let graceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -38,6 +40,7 @@ export const useAtlas = create<AtlasState>((set) => ({
   flyTarget: null,
   flyDistance: 40,
   legendOpen: false,
+  idle: true,
   mode: 'popularity',
   setUniverse: (u) => set({ universe: u, bodies: new Map(u.bodies.map((b) => [b.id, b])) }),
   hoverEnter: (id) => {
@@ -54,6 +57,7 @@ export const useAtlas = create<AtlasState>((set) => ({
       flyTarget: b.p, flyDistance: b.d * 8 + 16,
       focusedId: b.id, focusMode: mode,
       isCameraLocked: true, lastFocusStartedAt: Date.now(),
+      idle: false,
     });
   },
   arrive: () => {
@@ -70,4 +74,5 @@ export const useAtlas = create<AtlasState>((set) => ({
     set({ flyTarget: null, focusedId: null, focusMode: 'none', isCameraLocked: false });
   },
   setLegendOpen: (v) => set({ legendOpen: v }),
+  setIdle: (v) => set({ idle: v }),
 }));
