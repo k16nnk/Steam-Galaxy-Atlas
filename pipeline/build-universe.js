@@ -330,6 +330,63 @@ for (const g of games) {
 for (const g of games) g.diameter = diameterOf(g);
 for (const g of games) g.color = colorOf(g);
 
+/* ---------- 7.5 近傍グラフ (Discovery Route用) / hidden_gem_score ---------- */
+// 各enriched天体のrelation上位6件を事前計算 → nb: [[appid, score100, type]]
+// type: s=series d=developer p=publisher t=tags g=hidden gem (相手hg>=60)
+const NB_MIN = 0.28, NB_K = 6;
+const nbPool = games.filter((g) => g.enriched && (g.type === 'planet' || g.type === 'star'));
+{
+  const tagIndex = new Map();
+  for (const g of nbPool) {
+    for (const t of g.tagList.slice(0, 8)) {
+      if (!tagIndex.has(t)) tagIndex.set(t, []);
+      tagIndex.get(t).push(g);
+    }
+  }
+  for (const g of nbPool) {
+    const seen = new Set([g.appid]);
+    const scored = [];
+    for (const t of g.tagList.slice(0, 8)) {
+      const bucket = tagIndex.get(t) || [];
+      if (bucket.length > 500) continue; // 汎用タグ単独では候補にしない
+      for (const c of bucket) {
+        if (seen.has(c.appid)) continue;
+        seen.add(c.appid);
+        const r = relation(g, c);
+        if (r.score >= NB_MIN) scored.push([c, r]);
+      }
+    }
+    scored.sort((a, b) => b[1].score - a[1].score);
+    g.nb = scored.slice(0, NB_K).map(([c, r]) => {
+      const type = r.series ? 's' : r.dev ? 'd'
+        : r.tagSim >= 0.3 ? 't' : r.pub ? 'p' : 't';
+      return [c.appid, Math.round(r.score * 100), type];
+    });
+  }
+}
+// hidden_gem_score: 高評価×中規模レビュー×非巨大所有×有名近傍×現役
+for (const g of games) {
+  g.hg = 0;
+  if (!g.enriched || g.type === 'moon' || !g.review_count) continue;
+  if (g.wilson < 0.80) continue;
+  const rc = g.review_count;
+  if (rc < 40) continue;
+  // 注: 現データセットは所有者数上位のため「絶対的な無名さ」ではなく
+  // 「データセット内での相対的な埋もれ度」を測る (プレイ時間はSteamSpy all では常に0)
+  const wilsonPart = Math.min(1, (g.wilson - 0.80) / 0.17);
+  const revPart = Math.max(0, 1 - Math.abs(Math.log10(rc) - 3.0) / 1.3); // ピーク~1,000件
+  const ownPart = Math.max(0, 1 - nlog(g.owners_mid, 2_000_000));
+  const famous = (g.nb || []).some(([id]) => (byId.get(id)?.influence ?? 0) >= 70) ? 1 : 0;
+  g.hg = Math.round(40 * wilsonPart + 25 * revPart + 20 * ownPart + 15 * famous);
+}
+// nbのtypeにHidden Gemフラグを反映
+for (const g of nbPool) {
+  if (!g.nb) continue;
+  for (const e of g.nb) if ((byId.get(e[0])?.hg ?? 0) >= 60) e[2] = 'g';
+}
+console.log('nb coverage:', nbPool.filter((g) => g.nb?.length).length, '/', nbPool.length,
+  '| hidden gems (hg>=60):', games.filter((g) => g.hg >= 60).length);
+
 /* ---------- 8. 座標生成 (決定的・コンパクト3D星団) ----------
    (1) 各銀河のローカル座標で星系/惑星/衛星/フィールド惑星/小惑星を配置し実半径を計測
    (2) 実半径を使い Fibonacci球殻 + 反発緩和で銀河中心をコンパクトに配置 (円環配置は廃止)
@@ -514,11 +571,42 @@ const bodies = games.filter((g) => g.pos || g.type === 'star').map((g) => {
   if (g.developer) b.dev = g.developer;
   if (g.review_count) b.rv = [g.review_count, g.review_pct];
   if (g.ea) b.ea = 1;
-  if (g.tagList.length) b.tg = g.tagList.slice(0, 8); // debug関連スコア用
+  if (g.tagList.length) b.tg = g.tagList.slice(0, 8); // debug関連スコア/Lens用
   if (g.publisher) b.pub = g.publisher;
   if (g.average_forever) b.pt = g.average_forever;
+  if (g.nb?.length) b.nb = g.nb;                       // Discovery Route
+  if (g.hg >= 40) b.hg = g.hg;                         // Hidden Gem
+  if (g.price != null && g.tagList.length) b.pr = g.price; // Lens: 価格
+  if (g.owners_mid && g.tagList.length) b.ow = g.owners_mid; // Lens: 推定所有者(推定値)
   return b;
 }).filter((b) => b.p);
+
+/* タグ市場統計 (Developer Lens用) → tags.json */
+{
+  const tagsDir = path.join(ROOT, 'web', 'public');
+  mkdirSync(tagsDir, { recursive: true });
+  const stats = new Map();
+  for (const g of nbPool) {
+    for (const t of g.tagList.slice(0, 8)) {
+      if (!stats.has(t)) stats.set(t, { n: 0, owners: 0, wSum: 0, gems: 0 });
+      const s = stats.get(t);
+      s.n++; s.owners += g.owners_mid || 0; s.wSum += g.wilson; s.gems += g.hg >= 60 ? 1 : 0;
+    }
+  }
+  const rows = [...stats].filter(([, v]) => v.n >= 8)
+    .map(([t, v]) => ({ t, n: v.n, perTitle: v.owners / v.n, q: v.wSum / v.n, gem: v.gems / v.n }));
+  const sorted = rows.map((r) => r.perTitle).sort((a, b) => a - b);
+  const pct = (x) => sorted.findIndex((v) => v >= x) / Math.max(1, sorted.length - 1);
+  const tagsOut = {};
+  for (const r of rows) {
+    // opportunity: 1タイトルあたり需要が大きい × 平均評価に不満 × Gem率が高い
+    const opp = Math.round(100 * Math.min(1,
+      0.5 * pct(r.perTitle) + 0.3 * Math.min(1, Math.max(0, (0.9 - r.q) / 0.35)) + 0.2 * r.gem));
+    tagsOut[r.t] = [r.n, Math.round(r.perTitle / 1000), +r.q.toFixed(3), +r.gem.toFixed(3), opp];
+  }
+  writeFileSync(path.join(tagsDir, 'tags.json'), JSON.stringify(tagsOut));
+  console.log('tags.json:', Object.keys(tagsOut).length, 'tags');
+}
 
 // 銀河の代表タグ (汎用タグを除いた上位3)
 const GENERIC_TAGS = new Set(['Singleplayer', 'Multiplayer', 'Indie', 'Action', 'Adventure',

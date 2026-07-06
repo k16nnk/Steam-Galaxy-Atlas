@@ -101,7 +101,8 @@ main { position: fixed; inset: 0; }
 .legend-panel {
   margin-left: 8px;
   display: flex;
-  gap: 14px;
+  flex-direction: column;
+  gap: 7px;
   padding: 8px 12px;
   background: rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -115,7 +116,13 @@ main { position: fixed; inset: 0; }
   from { opacity: 0; transform: scaleX(0.9); }
   to { opacity: 1; transform: scaleX(1); }
 }
+.legend-cols { display: flex; gap: 14px; }
 .legend-col { display: flex; flex-direction: column; gap: 3px; }
+.legend-attrib {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+}
 .legend-row {
   display: flex;
   align-items: center;
@@ -137,6 +144,83 @@ main { position: fixed; inset: 0; }
   flex: none;
 }
 .legend-type { color: rgba(255, 255, 255, 0.85); font-weight: 600; }
+
+/* ---- Hidden Gem チップ (ポップアップ内) ---- */
+.gem-chip {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 6px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: rgba(180, 230, 205, 0.75);
+  border: 1px solid rgba(160, 220, 190, 0.3);
+  border-radius: 3px;
+}
+
+/* ---- Developer Lens (?lens=developer&appid=) ---- */
+.lens-panel {
+  position: fixed;
+  right: 12px;
+  top: 12px;
+  bottom: 12px;
+  width: 330px;
+  z-index: 25;
+  overflow-y: auto;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.75);
+}
+.lens-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.4);
+}
+.lens-head button {
+  background: none;
+  border: 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 15px;
+  cursor: pointer;
+}
+.lens-panel h3 { margin: 6px 0 0; font-size: 14px; color: rgba(255, 255, 255, 0.92); }
+.lens-sub { color: rgba(255, 255, 255, 0.45); margin-bottom: 4px; }
+.lens-panel h4 {
+  margin: 12px 0 4px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(160, 200, 235, 0.7);
+}
+.lens-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.lens-row span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lens-row span:last-child { flex: none; color: rgba(255, 255, 255, 0.55); }
+.lens-row em { font-style: normal; color: rgba(160, 220, 190, 0.8); }
+.lens-tags { display: flex; flex-wrap: wrap; gap: 4px 8px; color: rgba(255, 255, 255, 0.55); }
+.lens-foot {
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, 0.35);
+}
 
 /* ---- 開発者用デバッグ表示 (?debug=1) ---- */
 .debug-panel {

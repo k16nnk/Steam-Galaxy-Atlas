@@ -7,6 +7,7 @@ import Overlay from '../components/Overlay';
 import Search from '../components/Search';
 import Legend from '../components/Legend';
 import DebugPanel from '../components/DebugPanel';
+import DevLens from '../components/DevLens';
 
 const UniverseCanvas = dynamic(() => import('../components/Universe'), { ssr: false });
 
@@ -35,6 +36,7 @@ export default function Page() {
       <Search />
       <Legend />
       <DebugPanel />
+      <DevLens />
     </main>
   );
 }

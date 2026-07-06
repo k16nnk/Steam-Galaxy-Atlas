@@ -29,6 +29,15 @@
 - [x] 銀河ラベル (距離フェードビルボード) + Search右の円形凡例UI
 - [x] universe.json再生成 + next build検証済み
 
+## 成長フェーズ バッチA-C (2026-07-07 完了) — 設計は GROWTH.md
+
+- [x] A: nb近傍グラフ(relation上位6・type付き) / hidden_gem_score / tags.json(市場統計)
+- [x] B: Discovery Route(フォーカスで航路5本+ホバー0.6秒で1本) / Constellation(同銀河外周チェーン+星座名スプライト) / Gem呼吸明滅(シェーダー) / Discovery Pulse
+- [x] C: Developer Lens(?lens=developer&appid=X、lens.ts純関数) / 凡例に帰属1行
+- [ ] D: ユーザー作業 — LIMIT=5000でSteamSpy詳細を再収集しGem母集団を拡大
+- [ ] Shareable Moment実装(設計はGROWTH.md §12)
+- [ ] Camera Drift / Time Layer / Taste Passport (設計のみ)
+
 ## 未完了 / 次のステップ
 
 - [ ] 実データ取得 (要ユーザー実行: README「実データへの差し替え」参照。

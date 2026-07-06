@@ -27,11 +27,14 @@ const litVertex = /* glsl */ `
   attribute vec3 aColor;
   attribute vec3 aLightDir;
   attribute float aLum;
+  attribute vec2 aGem;   // [強度, 位相] Hidden Gemの呼吸明滅
+  uniform float uTime;
   varying vec3 vColor;
   varying vec3 vLightDir;
   varying float vLum;
   varying vec3 vNormal;
   varying vec3 vViewDir;
+  varying float vBreath;
   ${minSizeChunk}
   void main() {
     vColor = aColor; vLightDir = aLightDir; vLum = aLum;
@@ -39,6 +42,10 @@ const litVertex = /* glsl */ `
     vec4 wp = applyMinSize(position, f);
     vNormal = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * normal);
     vViewDir = normalize(cameraPosition - wp.xyz);
+    // Gemの呼吸: ゆっくり(±13%まで)、遠距離ではフェードアウト (点滅ノイズ化を防ぐ)
+    float dB = distance(cameraPosition, (modelMatrix * instanceMatrix * vec4(0.,0.,0.,1.)).xyz);
+    vBreath = 1.0 + aGem.x * 0.13 * sin(uTime * 0.85 + aGem.y)
+      * (1.0 - smoothstep(500.0, 1200.0, dB));
     gl_Position = projectionMatrix * viewMatrix * wp;
   }
 `;
@@ -48,12 +55,13 @@ const litFragment = /* glsl */ `
   varying float vLum;
   varying vec3 vNormal;
   varying vec3 vViewDir;
+  varying float vBreath;
   void main() {
     vec3 n = normalize(vNormal);
     float diff = max(dot(n, normalize(vLightDir)), 0.0);
     float rim = pow(1.0 - max(dot(n, normalize(vViewDir)), 0.0), 3.0) * 0.15;
     float albedo = 0.7 + 0.3 * vLum;
-    vec3 col = vColor * (0.07 + 0.93 * diff * albedo) + vColor * rim;
+    vec3 col = (vColor * (0.07 + 0.93 * diff * albedo) + vColor * rim) * vBreath;
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -133,15 +141,20 @@ function BodyMesh({ bodies, kind }: { bodies: Body[]; kind: Kind }) {
       new THREE.ShaderMaterial({
         vertexShader: kind === 'star' ? starVertex : litVertex,
         fragmentShader: kind === 'star' ? starFragment : litFragment,
-        uniforms: { uPx: { value: 0.002 }, uMinPx: { value: MIN_PX[kind] } },
+        uniforms: {
+          uPx: { value: 0.002 },
+          uMinPx: { value: MIN_PX[kind] },
+          uTime: { value: 0 },
+        },
       }),
     [kind],
   );
 
-  useFrame(({ camera, size }) => {
+  useFrame(({ camera, size, clock }) => {
     const fov = (camera as THREE.PerspectiveCamera).fov ?? 55;
     const px = Math.tan(THREE.MathUtils.degToRad(fov) / 2) / (size.height / 2);
     material.uniforms.uPx.value = px;
+    material.uniforms.uTime.value = clock.elapsedTime;
     view.pxFactor = px;
   });
 
@@ -150,6 +163,7 @@ function BodyMesh({ bodies, kind }: { bodies: Body[]; kind: Kind }) {
     const color = new Float32Array(n * 3);
     const light = new Float32Array(n * 3);
     const lum = new Float32Array(n);
+    const gem = new Float32Array(n * 2);
     const c = new THREE.Color();
     bodies.forEach((b, i) => {
       c.set(b.c);
@@ -157,8 +171,11 @@ function BodyMesh({ bodies, kind }: { bodies: Body[]; kind: Kind }) {
       const ld = b.ld ?? [0, 1, 0];
       light[i * 3] = ld[0]; light[i * 3 + 1] = ld[1]; light[i * 3 + 2] = ld[2];
       lum[i] = b.lum;
+      const hg = b.hg ?? 0;
+      gem[i * 2] = hg >= 60 ? 0.5 + 0.5 * Math.min(1, (hg - 60) / 25) : 0;
+      gem[i * 2 + 1] = (b.id % 628) / 100; // 位相 (0..2π)
     });
-    return { color, light, lum };
+    return { color, light, lum, gem };
   }, [bodies]);
 
   useLayoutEffect(() => {
@@ -211,12 +228,14 @@ function BodyMesh({ bodies, kind }: { bodies: Body[]; kind: Kind }) {
           <instancedBufferAttribute attach="attributes-aColor" args={[attrs.color, 3]} />
           <instancedBufferAttribute attach="attributes-aLightDir" args={[attrs.light, 3]} />
           <instancedBufferAttribute attach="attributes-aLum" args={[attrs.lum, 1]} />
+          <instancedBufferAttribute attach="attributes-aGem" args={[attrs.gem, 2]} />
         </icosahedronGeometry>
       ) : (
         <sphereGeometry args={[1, kind === 'star' ? 32 : 24, kind === 'star' ? 32 : 24]}>
           <instancedBufferAttribute attach="attributes-aColor" args={[attrs.color, 3]} />
           <instancedBufferAttribute attach="attributes-aLightDir" args={[attrs.light, 3]} />
           <instancedBufferAttribute attach="attributes-aLum" args={[attrs.lum, 1]} />
+          <instancedBufferAttribute attach="attributes-aGem" args={[attrs.gem, 2]} />
         </sphereGeometry>
       )}
     </instancedMesh>

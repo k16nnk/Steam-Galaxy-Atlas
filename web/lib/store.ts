@@ -7,6 +7,7 @@ interface AtlasState {
   universe: Universe | null;
   bodies: Map<number, Body>;
   hoverId: number | null;      // ホバー中 (天体 or ポップアップ上)
+  hoverStartedAt: number;      // ホバー滞在時間 (航路のdwell判定用)
   focusedId: number | null;    // 検索/ダブルクリックのフォーカス対象 (照準表示)
   focusMode: FocusMode;
   isCameraLocked: boolean;     // カメラ移動アニメーション中のみtrue
@@ -33,6 +34,7 @@ export const useAtlas = create<AtlasState>((set) => ({
   universe: null,
   bodies: new Map(),
   hoverId: null,
+  hoverStartedAt: 0,
   focusedId: null,
   focusMode: 'none',
   isCameraLocked: false,
@@ -45,7 +47,8 @@ export const useAtlas = create<AtlasState>((set) => ({
   setUniverse: (u) => set({ universe: u, bodies: new Map(u.bodies.map((b) => [b.id, b])) }),
   hoverEnter: (id) => {
     if (graceTimer) { clearTimeout(graceTimer); graceTimer = null; }
-    set({ hoverId: id });
+    set((s) => (s.hoverId === id ? { hoverId: id }
+      : { hoverId: id, hoverStartedAt: Date.now() }));
   },
   hoverLeave: () => {
     if (graceTimer) clearTimeout(graceTimer);
@@ -63,10 +66,10 @@ export const useAtlas = create<AtlasState>((set) => ({
   arrive: () => {
     set({ isCameraLocked: false, flyTarget: null });
     if (focusTimer) clearTimeout(focusTimer);
-    // 照準ハイライトは到着後しばらく残してから自動解除
+    // 照準+航路+星座は到着後しばらく残してから自動解除
     focusTimer = setTimeout(
       () => set((s) => (s.focusMode !== 'none' ? { focusedId: null, focusMode: 'none' } : {})),
-      4000,
+      10000,
     );
   },
   clearFocus: () => {

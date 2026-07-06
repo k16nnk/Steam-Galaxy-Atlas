@@ -96,6 +96,9 @@ export default function Overlay() {
               {popupBody.rel && <div>{popupBody.rel}</div>}
               {popupBody.dev && <div>{popupBody.dev}</div>}
               {popupBody.rv && <div>{reviewLabel(popupBody.rv[0], popupBody.rv[1])}</div>}
+              {(popupBody.hg ?? 0) >= 60 && (
+                <div><span className="gem-chip">Hidden Gem</span></div>
+              )}
             </div>
           </div>
         </a>

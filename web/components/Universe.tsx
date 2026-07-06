@@ -6,6 +6,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import Bodies from './Bodies';
+import FocusGraph from './FocusGraph';
 import GalaxyLabels from './GalaxyLabels';
 import { useAtlas } from '../lib/store';
 import { screen, view } from '../lib/screenBus';
@@ -93,6 +94,7 @@ export default function Universe() {
       <color attach="background" args={['#030308']} />
       <Stars radius={12000} depth={3000} count={3000} factor={8} saturation={0} fade speed={0} />
       <Bodies />
+      <FocusGraph />
       <GalaxyLabels />
       <CameraRig />
       <IdleRotate />

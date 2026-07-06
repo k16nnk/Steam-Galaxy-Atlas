@@ -17,8 +17,12 @@ export interface Body {
   rv?: [number, number];  // [review_count, positive_pct]
   inf: number;            // influence 0..100
   ea?: number;
-  tg?: string[];          // top tags (debug関連スコア用)
+  tg?: string[];          // top tags (debug関連スコア/Lens用)
   pt?: number;            // average playtime (min)
+  nb?: [number, number, string][]; // 関連上位: [appid, score100, type s/d/p/t/g]
+  hg?: number;            // hidden_gem_score (>=40のみ格納)
+  pr?: number;            // price USD (Lens用)
+  ow?: number;            // 推定所有者数 (推定値, Lens用)
 }
 
 export interface Galaxy {

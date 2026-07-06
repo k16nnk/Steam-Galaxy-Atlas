@@ -54,22 +54,27 @@ export default function Legend() {
       </button>
       {open && (
         <div className="legend-panel">
-          <div className="legend-col">
-            {GENRES.map(([n, c]) => (
-              <div key={n} className="legend-row">
-                <span className="legend-chip" style={{ background: c }} />
-                {n}
-              </div>
-            ))}
+          <div className="legend-cols">
+            <div className="legend-col">
+              {GENRES.map(([n, c]) => (
+                <div key={n} className="legend-row">
+                  <span className="legend-chip" style={{ background: c }} />
+                  {n}
+                </div>
+              ))}
+            </div>
+            <div className="legend-col">
+              {TYPES.map(([n, desc, s]) => (
+                <div key={n} className="legend-row">
+                  <span className="legend-dot" style={{ width: s, height: s }} />
+                  <span className="legend-type">{n}</span>
+                  {desc}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="legend-col">
-            {TYPES.map(([n, desc, s]) => (
-              <div key={n} className="legend-row">
-                <span className="legend-dot" style={{ width: s, height: s }} />
-                <span className="legend-type">{n}</span>
-                {desc}
-              </div>
-            ))}
+          <div className="legend-attrib">
+            Data: SteamSpy (estimates) · Unofficial fan project — not affiliated with Valve
           </div>
         </div>
       )}
