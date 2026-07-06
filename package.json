@@ -1,0 +1,14 @@
+{
+  "name": "steam-galaxy-atlas",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "fetch:steamspy": "node pipeline/fetch-steamspy.js",
+    "import:raw": "node pipeline/import-raw.js",
+    "fetch:details:spy": "node pipeline/fetch-details.js spy",
+    "fetch:details:store": "node pipeline/fetch-details.js store",
+    "build:universe": "node pipeline/build-universe.js",
+    "report:relations": "node pipeline/report-relations.js"
+  }
+}
