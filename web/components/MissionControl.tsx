@@ -1,68 +1,53 @@
 'use client';
 
-// Mission Control: Search右側の小さな円形ボタン群 (↺ Reset / ✦ Explore / ◐ Mode / ⤓ Share)
-// + トースト / Daily Expedition / 初回オンボーディング1行。
-// すべて開閉式・半透明・宇宙の視界を塞がない。
+// Mission Control: 左下Searchの上に縦に並ぶ円形ボタン列。
+//   ✦ Explore / ◐ Mode / ★ My Universe / i Legend / ↺ Reset
+// ホバーで名称ラベル、クリックで右にパネル展開。
+// + トースト / Daily Expedition / 初回オンボーディング (画面下中央)。
 import { useEffect, useRef, useState } from 'react';
 import { useAtlas, type UniverseMode } from '../lib/store';
 import { ACTIONS, dailyExpedition, runAction } from '../lib/explore';
-import { bridge } from '../lib/captureBus';
 
 const MODES: { id: UniverseMode; label: string; desc: string }[] = [
   { id: 'explore', label: 'Explore', desc: '通常の宇宙' },
   { id: 'popularity', label: 'Popularity', desc: '影響力の大きい星を強調' },
   { id: 'gems', label: 'Hidden Gems', desc: '埋もれた名作だけが光る' },
   { id: 'timeline', label: 'Timeline', desc: '発売年で着色 (暖=古い 寒=新しい)' },
+  { id: 'mine', label: 'My Games', desc: 'お気に入り・所持・旅先だけ表示' },
 ];
 
-async function downloadCapture(subtitle?: string) {
-  const src = bridge.capture?.();
-  if (!src) return false;
-  const img = new Image();
-  await new Promise((r) => { img.onload = r; img.src = src; });
-  const W = 1600, H = 900;
-  const c = document.createElement('canvas');
-  c.width = W; c.height = H;
-  const x = c.getContext('2d')!;
-  x.fillStyle = '#030308';
-  x.fillRect(0, 0, W, H);
-  const s = Math.max(W / img.width, H / img.height);
-  x.drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s);
-  const grad = x.createLinearGradient(0, H - 150, 0, H);
-  grad.addColorStop(0, 'rgba(3,3,8,0)');
-  grad.addColorStop(1, 'rgba(3,3,8,0.92)');
-  x.fillStyle = grad;
-  x.fillRect(0, H - 150, W, 150);
-  x.fillStyle = 'rgba(235,242,250,0.92)';
-  x.font = '600 30px -apple-system, "Segoe UI", sans-serif';
-  x.fillText('STEAM GALAXY ATLAS', 40, H - 58);
-  if (subtitle) {
-    x.fillStyle = 'rgba(200,215,235,0.75)';
-    x.font = '400 21px -apple-system, "Segoe UI", sans-serif';
-    x.fillText(subtitle, 40, H - 26);
-  }
-  x.textAlign = 'right';
-  x.fillStyle = 'rgba(255,255,255,0.42)';
-  x.font = '400 17px -apple-system, "Segoe UI", sans-serif';
-  x.fillText('steam-galaxy-atlas.vercel.app · unofficial fan project', W - 40, H - 30);
-  const a = document.createElement('a');
-  a.download = 'steam-galaxy-atlas.png';
-  a.href = c.toDataURL('image/png');
-  a.click();
-  return true;
-}
+const GENRES: [string, string][] = [
+  ['Action', 'hsl(8, 50%, 60%)'],
+  ['RPG', 'hsl(275, 48%, 62%)'],
+  ['Adventure', 'hsl(215, 48%, 62%)'],
+  ['Strategy', 'hsl(130, 42%, 58%)'],
+  ['Simulation', 'hsl(190, 45%, 62%)'],
+  ['Sports', 'hsl(50, 52%, 60%)'],
+  ['Horror', 'hsl(355, 45%, 40%)'],
+  ['Puzzle', 'hsl(210, 15%, 78%)'],
+  ['Indie / other', 'hsl(300, 35%, 70%)'],
+];
+const TYPES: [string, string, number][] = [
+  ['Star', '中心的タイトル', 11],
+  ['Planet', '関連タイトル', 8],
+  ['Moon', 'DLC・派生', 5],
+  ['Asteroid', '小規模・低データ', 3.5],
+];
+
+type Panel = 'none' | 'explore' | 'mode' | 'legend';
 
 export default function MissionControl() {
   const universe = useAtlas((s) => s.universe);
+  const started = useAtlas((s) => s.started);
   const mode = useAtlas((s) => s.mode);
+  const myOpen = useAtlas((s) => s.myOpen);
   const toast = useAtlas((s) => s.toast);
-  const [panel, setPanel] = useState<'none' | 'explore' | 'mode'>('none');
+  const [panel, setPanel] = useState<Panel>('none');
   const [toastVisible, setToastVisible] = useState(false);
   const [expedition, setExpedition] = useState<ReturnType<typeof dailyExpedition> | null>(null);
   const [onboard, setOnboard] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // トースト自動フェード
   useEffect(() => {
     if (!toast) return;
     setToastVisible(true);
@@ -70,24 +55,22 @@ export default function MissionControl() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // Daily Expedition (ロード毎・10秒) / 初回オンボーディング (初訪問のみ・9秒)
+  // スタート後にDaily Expedition (12秒) / 初回のみオンボーディング (10秒)
   useEffect(() => {
-    if (!universe) return;
-    const exp = dailyExpedition();
-    setExpedition(exp);
-    const t1 = setTimeout(() => setExpedition(null), 10000);
+    if (!universe || !started) return;
+    setExpedition(dailyExpedition());
+    const t1 = setTimeout(() => setExpedition(null), 12000);
     let t2: ReturnType<typeof setTimeout> | undefined;
     try {
       if (!localStorage.getItem('sga_seen')) {
         setOnboard(true);
         localStorage.setItem('sga_seen', '1');
-        t2 = setTimeout(() => setOnboard(false), 9000);
+        t2 = setTimeout(() => setOnboard(false), 10000);
       }
-    } catch { /* localStorage不可でも動作 */ }
+    } catch { /* ignore */ }
     return () => { clearTimeout(t1); if (t2) clearTimeout(t2); };
-  }, [universe]);
+  }, [universe, started]);
 
-  // 外側クリック/Escでパネルを閉じる
   useEffect(() => {
     if (panel === 'none') return;
     const onDown = (e: PointerEvent) => {
@@ -117,73 +100,99 @@ export default function MissionControl() {
     }
   };
 
-  const share = async () => {
-    setPanel('none');
-    const st = useAtlas.getState();
-    const focus = st.focusedId ?? st.drawerId;
-    const name = focus != null ? st.bodies.get(focus)?.t : undefined;
-    const ok = await downloadCapture(name);
-    st.showToast(ok ? 'Image saved' : 'Capture failed');
-  };
+  if (!started) return null;
 
   return (
-    <div ref={rootRef} className="mc">
-      <div className="mc-item">
-        <button className="legend-btn" title="Reset view" aria-label="Reset view"
-          onClick={() => { setPanel('none'); useAtlas.getState().resetView(); }}>
-          ↺
-        </button>
-      </div>
-      <div className="mc-item">
-        <button className={`legend-btn${panel === 'explore' ? ' open' : ''}`}
-          title="Explore" aria-label="Explore"
-          onClick={() => setPanel(panel === 'explore' ? 'none' : 'explore')}>
-          ✦
-        </button>
-        {panel === 'explore' && (
-          <div className="mc-panel">
-            {ACTIONS.map((a) => (
-              <button key={a.id} onClick={() => explore(a.id)}>{a.label}</button>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="mc-item">
-        <button className={`legend-btn${panel === 'mode' ? ' open' : ''}`}
-          title="Universe mode" aria-label="Universe mode"
-          onClick={() => setPanel(panel === 'mode' ? 'none' : 'mode')}>
-          ◐
-        </button>
-        {panel === 'mode' && (
-          <div className="mc-panel">
-            {MODES.map((m) => (
-              <button key={m.id} className={mode === m.id ? 'active' : ''}
-                onClick={() => { useAtlas.getState().setMode(m.id); setPanel('none'); }}>
-                <b>{m.label}</b>
-                <span>{m.desc}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="mc-item">
-        <button className="legend-btn" title="Save image" aria-label="Save image" onClick={share}>
-          ⤓
-        </button>
+    <>
+      <div ref={rootRef} className="mc">
+        <div className="mc-item">
+          <button className={`legend-btn${panel === 'explore' ? ' open' : ''}`}
+            onClick={() => setPanel(panel === 'explore' ? 'none' : 'explore')}>✦</button>
+          <span className="mc-label">Explore</span>
+          {panel === 'explore' && (
+            <div className="mc-panel">
+              {ACTIONS.map((a) => (
+                <button key={a.id} onClick={() => explore(a.id)}>{a.label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="mc-item">
+          <button className={`legend-btn${panel === 'mode' ? ' open' : ''}`}
+            onClick={() => setPanel(panel === 'mode' ? 'none' : 'mode')}>◐</button>
+          <span className="mc-label">View mode</span>
+          {panel === 'mode' && (
+            <div className="mc-panel">
+              {MODES.map((m) => (
+                <button key={m.id} className={mode === m.id ? 'active' : ''}
+                  onClick={() => { useAtlas.getState().setMode(m.id); setPanel('none'); }}>
+                  <b>{m.label}</b>
+                  <span>{m.desc}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="mc-item">
+          <button className={`legend-btn${myOpen ? ' open' : ''}`}
+            onClick={() => { setPanel('none'); useAtlas.getState().setMyOpen(!myOpen); }}>★</button>
+          <span className="mc-label">My universe</span>
+        </div>
+        <div className="mc-item">
+          <button className={`legend-btn${panel === 'legend' ? ' open' : ''}`}
+            onClick={() => setPanel(panel === 'legend' ? 'none' : 'legend')}>i</button>
+          <span className="mc-label">Legend</span>
+          {panel === 'legend' && (
+            <div className="mc-panel legend-panel-v">
+              <div className="legend-cols">
+                <div className="legend-col">
+                  {GENRES.map(([n, c]) => (
+                    <div key={n} className="legend-row">
+                      <span className="legend-chip" style={{ background: c }} />
+                      {n}
+                    </div>
+                  ))}
+                </div>
+                <div className="legend-col">
+                  {TYPES.map(([n, desc, sz]) => (
+                    <div key={n} className="legend-row">
+                      <span className="legend-dot" style={{ width: sz, height: sz }} />
+                      <span className="legend-type">{n}</span>
+                      {desc}
+                    </div>
+                  ))}
+                  <div className="legend-row">
+                    <span className="legend-dot" style={{ width: 7, height: 7, background: 'rgba(255,215,130,0.85)' }} />
+                    <span className="legend-type">Gold</span>お気に入り
+                  </div>
+                </div>
+              </div>
+              <div className="legend-attrib">
+                Data: SteamSpy (estimates) · Unofficial — not affiliated with Valve
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="mc-item">
+          <button className="legend-btn"
+            onClick={() => { setPanel('none'); useAtlas.getState().resetView(); }}>↺</button>
+          <span className="mc-label">Reset view</span>
+        </div>
       </div>
 
-      {/* トースト / Daily Expedition / オンボーディング (同じスロット、優先順) */}
+      {/* 画面下中央: トースト / Daily Expedition / オンボーディング */}
       {toast && toastVisible ? (
-        <div className="mc-line" key={toast.id}>{toast.text}</div>
+        <div className="center-line" key={toast.id}>{toast.text}</div>
       ) : expedition ? (
-        <button className="mc-line mc-exp" onClick={() => { setExpedition(null); explore(expedition.id); }}>
+        <button className="center-line center-exp"
+          onClick={() => { setExpedition(null); explore(expedition.id); }}>
           Today&apos;s expedition: {expedition.daily} →
         </button>
       ) : onboard ? (
-        <div className="mc-line mc-onboard">
-          Search a game · Double-click a star · Follow the route
+        <div className="center-line center-onboard">
+          Search a game · Double-click a star to travel · Click a star for details
         </div>
       ) : null}
-    </div>
+    </>
   );
 }

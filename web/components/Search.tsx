@@ -9,7 +9,6 @@ export default function Search() {
   const universe = useAtlas((s) => s.universe);
   const flyTo = useAtlas((s) => s.flyTo);
   const clearFocus = useAtlas((s) => s.clearFocus);
-  const setIdle = useAtlas((s) => s.setIdle);
   const resetCount = useAtlas((s) => s.resetCount);
   const [q, setQ] = useState('');
   const [idx, setIdx] = useState(0);
@@ -68,9 +67,7 @@ export default function Search() {
         value={q}
         placeholder="Search"
         spellCheck={false}
-        onFocus={() => setIdle(false)}
         onChange={(e) => {
-          setIdle(false);
           setQ(e.target.value);
           setIdx(0);
           if (e.target.value.trim() === '') clearFocus(); // 空欄でフォーカス解除

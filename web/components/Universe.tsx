@@ -1,7 +1,7 @@
 'use client';
 
 import * as THREE from 'three';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
@@ -10,16 +10,18 @@ import FocusGraph from './FocusGraph';
 import GalaxyLabels from './GalaxyLabels';
 import { useAtlas } from '../lib/store';
 import { screen, view } from '../lib/screenBus';
-import { bridge } from '../lib/captureBus';
 
-/* 共有画像キャプチャ用ブリッジ (preserveDrawingBuffer前提) */
-function CaptureBridge() {
-  const { gl } = useThree();
-  useEffect(() => {
-    bridge.capture = () => gl.domElement.toDataURL('image/png');
-    return () => { bridge.capture = undefined; };
-  }, [gl]);
-  return null;
+/* 背景の星空を常時ごくゆっくり回す — 画面が完全な静止画にならないように */
+function AmbientStars() {
+  const ref = useRef<THREE.Group>(null!);
+  useFrame((_, dt) => {
+    if (ref.current) ref.current.rotation.y += dt * 0.0035;
+  });
+  return (
+    <group ref={ref}>
+      <Stars radius={12000} depth={3000} count={3000} factor={10} saturation={0} fade speed={0} />
+    </group>
+  );
 }
 
 /* 検索/ダブルクリック時のカメラ移動。
@@ -32,9 +34,10 @@ function CameraRig() {
       addEventListener: (e: string, f: () => void) => void;
       removeEventListener: (e: string, f: () => void) => void;
     };
+    // ドラッグでは自動回転を止めない (ズーム/飛行でのみ停止)。
+    // 飛行中の手動操作は照準のみ解除 (航路・発光はEsc/Resetまで残す)
     const onStart = () => {
       const st = useAtlas.getState();
-      if (st.idle) st.setIdle(false); // 初回操作で自動回転を停止
       if (st.flyTarget || st.focusMode !== 'none') st.clearFocus();
     };
     ctl.addEventListener('start', onStart);
@@ -99,18 +102,18 @@ export default function Universe() {
   return (
     <Canvas
       camera={{ position: [0, 1200, 2900], fov: 55, near: 0.5, far: 30000 }}
-      gl={{ antialias: true, preserveDrawingBuffer: true }}
+      gl={{ antialias: true }}
       dpr={[1, 2]}
+      onWheel={() => useAtlas.getState().setIdle(false)}
     >
       <color attach="background" args={['#030308']} />
-      <Stars radius={12000} depth={3000} count={3000} factor={8} saturation={0} fade speed={0} />
+      <AmbientStars />
       <Bodies />
       <FocusGraph />
       <GalaxyLabels />
       <CameraRig />
       <IdleRotate />
       <ScreenTracker />
-      <CaptureBridge />
       <OrbitControls
         makeDefault
         enableDamping

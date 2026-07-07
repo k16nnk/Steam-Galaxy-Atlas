@@ -3,6 +3,25 @@
 「continue」と入力されたら、このファイルを読んで未完了の先頭タスクから再開すること。
 設計の詳細は DESIGN.md、起動方法は README.md を参照。
 
+## Journeyフェーズ (コア体験再設計) — 2026-07-07 完了
+
+確定した設計判断: 航路/星座/発光はReset・Escまで永続 / 訪問星は金色トレイル線 /
+回転はズーム・飛行でのみ停止(ドラッグでは止めない)+背景星空は常時微回転 /
+Share削除→★お気に入り(localStorage) / スタート画面(毎回・ロード兼用) /
+My Universeシーン(お気に入り・履歴・嗜好タグ・Steam取込=/api/steam経由、要STEAM_API_KEY環境変数) /
+UI: 左下Search+縦ボタン列(✦◐★i↺、ホバーでラベル) / モードに「My Games」追加(aState属性)
+
+- [x] J1 store全面改訂: route永続/visited/favorites/owned/stateVersion/started/myOpen/loadPersisted/clearJourney
+- [x] J2 Bodies: aState(glow,fav,own)動的属性+発光シェーダー+mode4(mine)
+- [x] J3 FocusGraph改訂: store.route駆動で永続表示+訪問トレイル線(金)
+- [x] J4 Universe: idle停止=ズーム/飛行のみ+背景星空の常時微回転+Capture削除 (Reset後は回転再開)
+- [x] J5 StartScreen.tsx (click to start、ロード表示兼用、毎回表示)
+- [x] J6 MyUniverse.tsx + app/api/steam/route.ts (STEAM_API_KEY未設定時は501+日本語案内)
+- [x] J7 MissionControl再構成: 縦列✦◐★i↺+凡例統合+Share削除+下中央トースト
+- [x] J8 Drawer: ★お気に入りトグル (金色発光と連動)
+- [x] J9 CSS全面再配置 (Legend.tsxは未使用化)
+- [x] J10 next build検証済み → 残: git push + (任意)VercelにSTEAM_API_KEY設定
+
 ## Mission Controlフェーズ (2026-07-07 完了・自律実行)
 
 方針判断(自己裁量で確定): シングルクリック=Detail Drawer / ダブルクリック=フォーカス飛行 /

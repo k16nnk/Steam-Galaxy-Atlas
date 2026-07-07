@@ -24,7 +24,11 @@ export default function Drawer() {
   const flyTo = useAtlas((s) => s.flyTo);
   const openDrawer = useAtlas((s) => s.openDrawer);
 
+  const favorites = useAtlas((s) => s.favorites);
+  const toggleFavorite = useAtlas((s) => s.toggleFavorite);
+
   const body = drawerId != null ? bodies.get(drawerId) : undefined;
+  const isFav = body ? favorites.includes(body.id) : false;
 
   const context = useMemo(() => {
     if (!body || !universe) return null;
@@ -45,7 +49,16 @@ export default function Drawer() {
       <img src={headerImage(body.id)} alt="" draggable={false}
         onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
       <div className="drawer-body">
-        <h3>{body.t}</h3>
+        <div className="drawer-title">
+          <h3>{body.t}</h3>
+          <button
+            className={`drawer-fav${isFav ? ' on' : ''}`}
+            title={isFav ? 'お気に入りから外す' : 'お気に入りに登録 (星が金色に灯ります)'}
+            onClick={() => toggleFavorite(body.id)}
+          >
+            {isFav ? '★' : '☆'}
+          </button>
+        </div>
         <div className="drawer-type">{TYPE_LABEL[body.ty]}</div>
 
         <div className="drawer-grid">

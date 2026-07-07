@@ -37,6 +37,16 @@ npm run build:universe        # → web/public/universe.json を再生成
 - データは `data/atlas.db` (SQLite) にキャッシュ。取得日時とデータソースを保存。
 - 所有者数・市場規模などはすべて **SteamSpyによる推定値** です。
 
+## Steamライブラリ取込 (任意)
+
+My Universe (★) からSteamの所持ゲームを取り込むには、サーバー側にAPIキーが必要です:
+
+1. https://steamcommunity.com/dev/apikey でSteam Web APIキーを取得
+2. Vercelのプロジェクト設定 → Environment Variables に `STEAM_API_KEY` として追加 → Redeploy
+
+キー未設定でもサイト自体は完全に動作します(取込機能だけが案内表示になります)。
+取り込んだデータはユーザーのブラウザ(localStorage)にのみ保存され、サーバーには一切保存されません。
+
 ## 構成
 
 - `pipeline/` — データ取得・influence_score計算・分類・星系/銀河クラスタリング・座標生成 (依存パッケージなし、Node標準のみ)

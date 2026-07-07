@@ -5,8 +5,9 @@ import { useEffect } from 'react';
 import { useAtlas } from '../lib/store';
 import Overlay from '../components/Overlay';
 import Search from '../components/Search';
-import Legend from '../components/Legend';
 import MissionControl from '../components/MissionControl';
+import StartScreen from '../components/StartScreen';
+import MyUniverse from '../components/MyUniverse';
 import Drawer from '../components/Drawer';
 import GalaxySummary from '../components/GalaxySummary';
 import DebugPanel from '../components/DebugPanel';
@@ -16,20 +17,19 @@ const UniverseCanvas = dynamic(() => import('../components/Universe'), { ssr: fa
 
 export default function Page() {
   const setUniverse = useAtlas((s) => s.setUniverse);
+  const started = useAtlas((s) => s.started);
   useEffect(() => {
+    useAtlas.getState().loadPersisted();
     fetch('/universe.json')
       .then((r) => r.json())
       .then(setUniverse)
       .catch(() => {});
   }, [setUniverse]);
 
-  // Escでフォーカス解除+ドロワーを閉じる (凡例/パネルは各コンポーネント側で処理)
+  // Esc: 旅の状態 (航路・発光・照準・ドロワー) をまとめて解除
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        useAtlas.getState().clearFocus();
-        useAtlas.getState().closeDrawer();
-      }
+      if (e.key === 'Escape') useAtlas.getState().clearJourney();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -38,12 +38,17 @@ export default function Page() {
   return (
     <main>
       <UniverseCanvas />
-      <Overlay />
-      <Search />
-      <Legend />
+      {started && (
+        <>
+          <Overlay />
+          <Search />
+          <Drawer />
+          <GalaxySummary />
+        </>
+      )}
       <MissionControl />
-      <Drawer />
-      <GalaxySummary />
+      <MyUniverse />
+      <StartScreen />
       <DebugPanel />
       <DevLens />
     </main>

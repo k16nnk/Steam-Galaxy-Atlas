@@ -22,22 +22,29 @@ const minSizeChunk = /* glsl */ `
   }
 `;
 
-/* 表示モード (uMode: 0=explore 1=popularity 2=gems 3=timeline) の減光/着色 */
+/* 表示モード (uMode: 0=explore 1=popularity 2=gems 3=timeline 4=mine) の減光/着色
+   + Journey状態 aState = [発光(航路の旅先), お気に入り, Steam所持] */
 const modeChunk = /* glsl */ `
   attribute float aInf;   // influence 0..1
   attribute float aYear;  // 発売年 0..1 (2004..2026), 不明=-1
+  attribute vec3 aState;  // [journey glow, favorite, owned]
   uniform float uMode;
   varying float vDim;
   varying vec3 vTint;
+  varying float vGlow;
+  varying float vFav;
   void applyMode(float gem) {
     vDim = 1.0; vTint = vec3(1.0);
+    vGlow = aState.x; vFav = aState.y;
     if (uMode > 0.5 && uMode < 1.5) {           // Popularity
       vDim = mix(0.20, 1.15, pow(aInf, 1.3));
     } else if (uMode > 1.5 && uMode < 2.5) {    // Hidden Gems
       vDim = gem > 0.01 ? 1.3 : 0.14;
-    } else if (uMode > 2.5) {                   // Timeline
+    } else if (uMode > 2.5 && uMode < 3.5) {    // Timeline
       if (aYear >= 0.0) vTint = mix(vec3(1.22, 0.84, 0.52), vec3(0.62, 0.94, 1.30), aYear);
       else { vDim = 0.28; vTint = vec3(0.85); }
+    } else if (uMode > 3.5) {                   // My Games (所持/お気に入り/旅先のみ)
+      vDim = (aState.x + aState.y + aState.z) > 0.01 ? 1.18 : 0.13;
     }
   }
 `;
@@ -80,12 +87,17 @@ const litFragment = /* glsl */ `
   varying float vBreath;
   varying float vDim;
   varying vec3 vTint;
+  varying float vGlow;
+  varying float vFav;
+  uniform float uTime;
   void main() {
     vec3 n = normalize(vNormal);
     float diff = max(dot(n, normalize(vLightDir)), 0.0);
     float rim = pow(1.0 - max(dot(n, normalize(vViewDir)), 0.0), 3.0) * 0.15;
     float albedo = 0.7 + 0.3 * vLum;
     vec3 col = (vColor * (0.07 + 0.93 * diff * albedo) + vColor * rim) * vBreath;
+    col += vColor * vGlow * (0.50 + 0.18 * sin(uTime * 2.2)); // 旅先の発光 (Esc/Resetまで)
+    col += vec3(1.0, 0.85, 0.45) * 0.22 * vFav;               // お気に入りの金色
     gl_FragColor = vec4(col * vDim * vTint, 1.0);
   }
 `;
@@ -118,10 +130,15 @@ const starFragment = /* glsl */ `
   varying vec3 vViewDir;
   varying float vDim;
   varying vec3 vTint;
+  varying float vGlow;
+  varying float vFav;
+  uniform float uTime;
   void main() {
     vec3 n = normalize(vNormal);
     float fres = pow(max(dot(n, normalize(vViewDir)), 0.0), 0.6);
     vec3 col = vColor * (0.75 + 0.9 * vLum) * (0.78 + 0.22 * fres);
+    col += vColor * vGlow * (0.6 + 0.2 * sin(uTime * 2.2));
+    col += vec3(1.0, 0.85, 0.45) * 0.25 * vFav;
     gl_FragColor = vec4(col * vDim * vTint, 1.0);
   }
 `;
@@ -187,9 +204,33 @@ function BodyMesh({ bodies, kind }: { bodies: Body[]; kind: Kind }) {
     material.uniforms.uTime.value = clock.elapsedTime;
     const m = useAtlas.getState().mode;
     material.uniforms.uMode.value =
-      m === 'popularity' ? 1 : m === 'gems' ? 2 : m === 'timeline' ? 3 : 0;
+      m === 'popularity' ? 1 : m === 'gems' ? 2 : m === 'timeline' ? 3 : m === 'mine' ? 4 : 0;
     view.pxFactor = px;
   });
+
+  // Journey状態 (発光/お気に入り/所持) の動的更新
+  const stateAttr = useMemo(
+    () => new THREE.InstancedBufferAttribute(new Float32Array(bodies.length * 3), 3),
+    [bodies],
+  );
+  const stateVersion = useAtlas((s) => s.stateVersion);
+  useLayoutEffect(() => {
+    const st = useAtlas.getState();
+    const glow = new Set<number>();
+    if (st.route) {
+      glow.add(st.route.sourceId);
+      for (const id of st.route.ids) glow.add(id);
+    }
+    const favs = new Set(st.favorites);
+    const owned = st.owned;
+    const a = stateAttr.array as Float32Array;
+    bodies.forEach((b, i) => {
+      a[i * 3] = glow.has(b.id) ? 1 : 0;
+      a[i * 3 + 1] = favs.has(b.id) ? 1 : 0;
+      a[i * 3 + 2] = owned && owned[b.id] != null ? 1 : 0;
+    });
+    stateAttr.needsUpdate = true;
+  }, [stateVersion, bodies, stateAttr]);
 
   const attrs = useMemo(() => {
     const n = bodies.length;
@@ -275,6 +316,7 @@ function BodyMesh({ bodies, kind }: { bodies: Body[]; kind: Kind }) {
           <instancedBufferAttribute attach="attributes-aGem" args={[attrs.gem, 2]} />
           <instancedBufferAttribute attach="attributes-aInf" args={[attrs.inf, 1]} />
           <instancedBufferAttribute attach="attributes-aYear" args={[attrs.year, 1]} />
+          <primitive attach="attributes-aState" object={stateAttr} />
         </icosahedronGeometry>
       ) : (
         <sphereGeometry args={[1, kind === 'star' ? 32 : 24, kind === 'star' ? 32 : 24]}>
@@ -284,6 +326,7 @@ function BodyMesh({ bodies, kind }: { bodies: Body[]; kind: Kind }) {
           <instancedBufferAttribute attach="attributes-aGem" args={[attrs.gem, 2]} />
           <instancedBufferAttribute attach="attributes-aInf" args={[attrs.inf, 1]} />
           <instancedBufferAttribute attach="attributes-aYear" args={[attrs.year, 1]} />
+          <primitive attach="attributes-aState" object={stateAttr} />
         </sphereGeometry>
       )}
     </instancedMesh>
